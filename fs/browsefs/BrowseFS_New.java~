@@ -1,0 +1,661 @@
+package browsefs;
+
+import javafuse.*;
+import org.openqa.selenium.By;
+import org.openqa.selenium.WebDriver;
+import org.openqa.selenium.WebElement;
+import org.openqa.selenium.firefox.FirefoxDriver;
+import java.lang.Thread;
+import java.lang.Runnable;
+import java.util.*;
+import java.io.*;
+import java.io.File;
+
+public class BrowseFS_New implements JavaFS
+{
+
+    //BrowserModule bm;
+    FSTree filesystemTree;
+    HashMap<String, BNode> namesToNodes;
+    public static WebDriver driver;
+    public final int FT_DIR = 0;
+    public final int FT_FILE = 1;
+    public final int ENOENT = 2;   // No such file or directory
+    public final int EACCES = 13;  // Permission denied
+    public final int S_IFREG = 32768;
+    public final int S_IFDIR = 16384;
+    public final int S_IROTH = 4;
+    public final int S_IRUSR = 256;
+    public final int S_IRGRP = 32;
+
+
+
+
+
+    public BrowseFS_New()
+    {
+	//bm = new BrowserModule();
+	//Thread t = new Thread(bm);
+	//t.start();
+	//driver = new FirefoxDriver();
+	namesToNodes = new HashMap<String, BNode>();
+	filesystemTree = new FSTree();
+	System.out.println("FS is constructed.");
+    }
+
+    public int getattr_pre(String path, Stat buf)
+    {
+	//DONT FORGET ABOUT MUTEX STUFF
+
+    	int result = -ENOENT;
+    	//file *parent;
+	BFile parent;
+    	//file *fil = find_file (path, parent);
+	//BFile fil = find_file (path, parent);
+	BFile fil = (BFile) namesToNodes.get(path);
+	   if (fil != null)
+	    {
+		// printf ("fil->name: %s\n", fil->name);
+
+		// LINE BELOW NEEDS FIXED
+		buf.st_mode = ((fil.type == FT_FILE) ? S_IFREG : S_IFDIR) | fil.st_mode;
+		buf.st_nlink = 1;
+		buf.st_size = fil.st_size;
+		buf.st_ctime = fil.st_ctime;
+		buf.st_atime = fil.st_atime;
+		buf.st_mtime = fil.st_mtime;
+		buf.st_uid = fil.st_uid;
+		buf.st_gid = fil.st_gid;
+		// stbuf->st_mode = fil->mode;
+		result = 0;
+	    }
+	System.out.println("getattr_pre");
+	System.out.println("   path = " + path);
+	buf.printOut();
+        return 0;
+    }
+
+    public int getattr_post(String path, Stat buf, int result)
+    {
+	System.out.println("getattr_post");
+	System.out.println("   path = " + path);
+	System.out.println("   result = " + result);
+	buf.printOut();
+        return 0;
+    }
+
+    public int readlink_pre(String path, String buf, int bufsize)
+    {
+	System.out.println("readlink_pre");
+        return 0;
+    }
+
+    public int readlink_post(String path, String buf, int bufsize, int result)
+    {
+	System.out.println("readlink_post");
+        return 0;
+    }
+
+    public int mknod_pre(String path, int mode, int dev)
+    {
+	System.out.println("mknod_pre");
+	System.out.println("   path = " + path);
+	System.out.println("   mode = " + mode);
+	System.out.println("   path = " + path);
+        return 0;
+    }
+
+    public int mknod_post(String path, int mode, int dev, int result)
+    {
+	System.out.println("mknod_post");
+        return 0;
+    }
+
+    public int mkdir_pre(String path, int mode)
+    {
+	String dirName = path.substring(1);
+	BFolder theNewFolder = new BFolder();
+
+	filesystemTree.root.add(theNewFolder);
+	namesToNodes.put(dirName, theNewFolder);
+	System.out.println("FOLDER CREATED");
+	System.out.println(dirName);
+	driver.get("http://" + dirName);
+	System.out.println("mkdir_pre");
+	System.out.println("   path = " + path);
+	System.out.println("   mode = " + mode);
+
+    //syslog (LOG_DEBUG, "mkdir %s (%d)\n", path, mode);
+    //pthread_mutex_lock (&root_mutex);
+    int result = -EACCES;
+    String pathd = new String(path);
+    String pathb = new String(path);
+    String dir = (new File(pathd)).getParent();
+    String base = (new File(pathb)).getName();
+    if (base.compareTo("/") != 0)
+    {
+	// printf ("dir: %s\n", dir);
+	BFile parent;
+	//BFile fil = find_file (dir, parent);
+	BFile fil = (BFile) namesToNodes.get(path);
+	if (fil != null)
+	{
+	    parent = fil;
+	    fil = create_dir (base, mode);
+	    parent.contents.Add(fil);  
+	    result = 0;
+	}
+	else result = -ENOENT;
+    }
+    // free (pathb);
+    // free (pathd);
+    // pthread_mutex_unlock (&root_mutex);
+    return result;
+    }
+
+    public int mkdir_post(String path, int mode, int result)
+    {
+	/*
+	String pageText;
+	try{
+		// Create files
+		FileWriter fstream = new FileWriter(path + "/source.txt");
+		BufferedWriter out = new BufferedWriter(fstream);
+		pageText = driver.getPageSource();
+		out.write(pageText);
+		//Close the output stream
+		out.close();
+	}
+	catch (Exception e){//Catch exception if any
+		System.err.println("Error: " + e.getMessage());
+	}
+	try{
+		// Create files
+		java.util.List<WebElement> linkCollection = driver.findElements(By.tagName("a"));
+		FileWriter fstream = new FileWriter(path + "/links.txt");
+		BufferedWriter out = new BufferedWriter(fstream);
+		for (int i=0; i<linkCollection.size(); i++) {
+			pageText = linkCollection.get(i).getText() + "\n";
+			out.write(pageText);
+		}
+		//Close the output stream
+		out.close();
+	}
+	catch (Exception e){//Catch exception if any
+		System.err.println("Error: " + e.getMessage());
+	}
+	try{
+		// Create files
+		pageText = driver.findElement(By.tagName("html")).getText();
+		FileWriter fstream = new FileWriter(path + "/visibleText.txt");
+		BufferedWriter out = new BufferedWriter(fstream);
+		out.write(pageText);
+		//Close the output stream
+		out.close();
+	}
+	catch (Exception e){//Catch exception if any
+		System.err.println("Error: " + e.getMessage());
+	}
+	System.out.println("mkdir_post");
+	System.out.println("   path = " + path);
+	System.out.println("   mode = " + mode);
+	System.out.println("   result = " + result);
+        return 0;
+
+	*/
+
+	return 0;
+    }
+
+    public int unlink_pre(String path)
+    {
+	System.out.println("unlink_pre");
+        return 0;
+    }
+
+    public int unlink_post(String path, int result)
+    {
+	System.out.println("unlink_post");
+        return 0;
+    }
+
+    public int rmdir_pre(String path)
+    {
+	System.out.println("rmdir_pre");
+        return 0;
+    }
+
+    public int rmdir_post(String path, int result)
+    {
+	System.out.println("rmdir_post");
+        return 0;
+    }
+
+    public int symlink_pre(String oldpath, String newpath)
+    {
+	System.out.println("symlink_pre");
+        return 0;
+    }
+
+    public int symlink_post(String oldpath, String newpath, int result)
+    {
+	System.out.println("symlink_post");
+        return 0;
+    }
+
+    public int rename_pre(String oldpath, String newpath)
+    {
+	System.out.println("rename_pre");
+        return 0;
+    }
+
+    public int rename_post(String oldpath, String newpath, int result)
+    {
+	System.out.println("rename_post");
+        return 0;
+    }
+
+    public int link_pre(String oldpath, String newpath)
+    {
+	System.out.println("link_pre");
+        return 0;
+    }
+
+    public int link_post(String oldpath, String newpath, int result)
+    {
+	System.out.println("link_post");
+        return 0;
+    }
+
+    public int chmod_pre(String path, int mod)
+    {
+	System.out.println("chmod_pre");
+        return 0;
+    }
+
+    public int chmod_post(String path, int mod, int result)
+    {
+	System.out.println("chmod_post");
+        return 0;
+    }
+
+    public int chown_pre(String path, int owner, int group)
+    {
+	System.out.println("chown_pre");
+        return 0;
+    }
+
+    public int chown_post(String path, int owner, int group, int result)
+    {
+	System.out.println("chown_post");
+        return 0;
+    }
+
+    public int truncate_pre(String path, int length)
+    {
+	System.out.println("truncate_pre");
+        return 0;
+    }
+
+    public int truncate_post(String path, int length, int result)
+    {
+	System.out.println("truncate_post");
+        return 0;
+    }
+
+    public int utime_pre(String filename, Utimbuf buf)
+    {
+	System.out.println("utime_pre");
+        return 0;
+    }
+
+    public int utime_post(String filename, Utimbuf buf, int result)
+    {
+	System.out.println("utime_post");
+        return 0;
+    }
+
+    public int open_pre(String path, Fuse_file_info info)
+    {
+	System.out.println("open_pre");
+	System.out.println("   path = " + path);
+        //syslog (LOG_DEBUG, "open %s (%d)\n", path, f->flags);
+    //pthread_mutex_lock (&root_mutex);
+    int result = -ENOENT;
+    BFile parent;
+    //BFile fil = find_file (path, parent);
+    BFile fil = (BFile) namesToNodes.get(path);
+	//THESE LINES BELOW NEED FIXED
+    long uid = fuse_get_context().uid;
+    long gid = fuse_get_context().gid;
+    if (fil != null && fil.type == FT_FILE)
+    {
+	if (uid == 0 || (uid == fil.st_uid && fil.st_mode & S_IRUSR) || (gid == fil.st_gid && fil.st_mode & S_IRGRP) || (uid != fil.st_uid && gid != fil.st_gid && fil.st_mode & S_IROTH))
+	{
+	    fil.usecount++;
+	// This line below will probably not work...
+	    f.fh = fil;
+	    f.keep_cache = CACHE_FILES;
+	    result = 0;
+	}
+	else result = -EACCES;
+    }
+    //pthread_mutex_unlock (&root_mutex);
+    return result;
+    }
+
+    public int open_post(String path, Fuse_file_info info, int result)
+    {
+	System.out.println("open_post");
+	System.out.println("   path = " + path);
+	System.out.println("   result = " + result);
+        return 0;
+    }
+
+    public int read_pre(String path, String buf, int size, int offset, Fuse_file_info info)
+    {
+	System.out.println("read_pre");
+	System.out.println("   path = " + path);
+	System.out.println("   buf = " + buf);
+	System.out.println("   size = " + size);
+	System.out.println("   offset = " + offset);
+        return 0;
+    }
+
+    public int read_post(String path, String buf, int size, int offset, Fuse_file_info info, int result)
+    {
+	System.out.println("read_post");
+	System.out.println("   path = " + path);
+	System.out.println("   buf = " + buf);
+	System.out.println("   size = " + size);
+	System.out.println("   offset = " + offset);
+	System.out.println("   result = " + result);
+        return 0;
+    }
+
+    public int write_pre(String path, String buf, int count, int offset, Fuse_file_info info)
+    {
+	System.out.println("write_pre");
+        return 0;
+    }
+
+    public int write_post(String path, String buf, int count, int offset, Fuse_file_info info, int result)
+    {
+	System.out.println("write_post");
+        return 0;
+    }
+
+    public int statfs_pre(String path, Statvfs buf)
+    {
+	System.out.println("statfs_pre");
+        return 0;
+    }
+
+    public int statfs_post(String path, Statvfs buf, int result)
+    {
+	System.out.println("statfs_post");
+        return 0;
+    }
+
+    public int flush_pre(String path, Fuse_file_info info)
+    {
+	System.out.println("flush_pre");
+        return 0;
+    }
+
+    public int flush_post(String path, Fuse_file_info info, int result)
+    {
+	System.out.println("flush_post");
+        return 0;
+    }
+
+    public int release_pre(String path, Fuse_file_info info)
+    {
+	System.out.println("release_pre");
+        return 0;
+    }
+
+    public int release_post(String path, Fuse_file_info info, int result)
+    {
+	System.out.println("release_post");
+        return 0;
+    }
+
+    public int fsync_pre(String path, int datasync, Fuse_file_info info)
+    {
+	System.out.println("fsync_pre");
+        return 0;
+    }
+
+    public int fsync_post(String path, int datasync, Fuse_file_info info, int result)
+    {
+	System.out.println("fsync_post");
+        return 0;
+    }
+
+    public int setxattr_pre(String path, String name, String value, int size, int flags)
+    {
+	System.out.println("setxattr_pre");
+        return 0;
+    }
+
+    public int setxattr_post(String path, String name, String value, int size, int flags, int result)
+    {
+	System.out.println("setxattr_post");
+        return 0;
+    }
+
+    public int getxattr_pre(String path, String name, String value, int size)
+    {
+	System.out.println("getxattr_pre");
+        return 0;
+    }
+
+    public int getxattr_post(String path, String name, String value, int size, int result)
+    {
+	System.out.println("getxattr_post");
+        return 0;
+    }
+
+    public int listxattr_pre(String path, String list, int size)
+    {
+	System.out.println("listxattr_pre");
+        return 0;
+    }
+
+    public int listxattr_post(String path, String list, int size, int result)
+    {
+	System.out.println("listxattr_post");
+        return 0;
+    }
+
+    public int removexattr_pre(String path, String name)
+    {
+	System.out.println("removexattr_pre");
+        return 0;
+    }
+
+    public int removexattr_post(String path, String name, int result)
+    {
+	System.out.println("removexattr_post");
+        return 0;
+    }
+
+    public int opendir_pre(String path, Fuse_file_info info)
+    {
+	System.out.println("opendir_pre");
+	System.out.println("   path = " + path);
+	info.printOut();
+        return 0;
+    }
+
+    public int opendir_post(String path, Fuse_file_info info, int result)
+    {
+	System.out.println("opendir_post");
+	System.out.println("   path = " + path);
+	System.out.println("   result = " + result);
+	info.printOut();
+        return 0;
+    }
+
+    public int readdir_pre(String path, long buf, long filler, int offset, Fuse_file_info info)
+    {
+	System.out.println("readdir_pre");
+	System.out.println("   path = " + path);
+	System.out.println("   buf = " + buf);
+	System.out.println("   filler = " + filler);
+	System.out.println("   offset = " + offset);
+	info.printOut();
+    	//pthread_mutex_lock (&root_mutex); THIS MIGHT NEED TO BE IMPLEMENTED
+    	//syslog (LOG_DEBUG, "readdir %s\n", path);
+    	int result = -ENOENT;
+    	BFile parent;
+    	//BFile fil = find_file (path, parent);
+	BFile fil = (BFile) namesToNodes.get(path);
+    	if (fil != null && fil.type == FT_DIR)
+    	{
+		// printf ("found dir %s\n", path);
+
+	// DOES FILLER() exist in JAVAFUSE libraries???
+		filler (buf, ".", null, 0);
+		filler (buf, "..", null, 0);
+		// printf ("fil->files->size(): %d\n", fil->files->size());
+		for (int i=0; i < fil.contents.size(); i++) filler (buf, fil.contents[i].name, null, 0);
+			result = 0;
+    	}
+  	//pthread_mutex_unlock (&root_mutex);
+
+        return 0;
+    }
+
+    public int readdir_post(String path, long buf, long filler, int offset, Fuse_file_info info, int result)
+    {
+	System.out.println("readdir_post");
+	System.out.println("   path = " + path);
+	System.out.println("   buf = " + buf);
+	System.out.println("   filler = " + filler);
+	System.out.println("   offset = " + offset);
+	System.out.println("   result = " + result);
+	info.printOut();
+        return 0;
+    }
+
+    public int releasedir_pre(String path, Fuse_file_info info)
+    {
+	System.out.println("releasedir_pre");
+        return 0;
+    }
+
+    public int releasedir_post(String path, Fuse_file_info info, int result)
+    {
+	System.out.println("releasedir_post");
+        return 0;
+    }
+
+    public int fsyncdir_pre(String path, int datasync, Fuse_file_info info)
+    {
+	System.out.println("fsyncdir_pre");
+        return 0;
+    }
+
+    public int fsyncdir_post(String path, int datasync, Fuse_file_info info, int result)
+    {
+	System.out.println("fsyncdir_post");
+        return 0;
+    }
+
+    public void init(Fuse_conn_info conn)
+    {
+	System.out.println("init");
+    }
+
+    public void destroy(long arg)
+    {
+	System.out.println("destroy");
+    }
+
+    public int access_pre(String path, int mode)
+    {
+	System.out.println("access_pre");
+        return 0;
+    }
+
+    public int access_post(String path, int mode, int result)
+    {
+	System.out.println("access_post");
+        return 0;
+    }
+
+    public int create_pre(String path, int mode, Fuse_file_info info)
+    {
+	System.out.println("create_pre");
+        return 0;
+    }
+
+    public int create_post(String path, int mode, Fuse_file_info info, int result)
+    {
+	System.out.println("create_post");
+        return 0;
+    }
+
+    public int ftruncate_pre(String path, int length, Fuse_file_info info)
+    {
+	System.out.println("ftruncate_pre");
+        return 0;
+    }
+
+    public int ftruncate_post(String path, int length, Fuse_file_info info, int result)
+    {
+	System.out.println("ftruncate_post");
+        return 0;
+    }
+
+    public int fgetattr_pre(String path, Stat st, Fuse_file_info info)
+    {
+	System.out.println("fgetattr_pre");
+        return 0;
+    }
+
+    public int fgetattr_post(String path, Stat st, Fuse_file_info info, int result)
+    {
+	System.out.println("fgettr_post");
+        return 0;
+    }
+
+    /*
+       public int lock_pre(String path, Fuse_file_info info, int cmd, struct flock *lock)
+       {
+       return 0;
+       }
+
+       public int lock_post(String path, Fuse_file_info info, int cmd, struct flock *lock, int result)
+       {
+       return 0;
+       }
+
+       public int utimens_pre(String path, const struct timespec tv[2])
+       {
+       return 0;
+       }
+
+       public int utimens_post(String path, const struct timespec tv[2], int result)
+       {
+       return 0;
+       }
+
+       public int bmap_pre(String path, int blocksize, uint64_t *idx)
+       {
+       return 0;
+       }
+
+       public int bmap_post(String path, int blocksize, uint64_t *idx, int result)
+       {
+       return 0;
+       }
+       */
+
+    protected void finalize()
+    {
+	System.out.println("finalize");
+    }
+}

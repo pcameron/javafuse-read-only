@@ -1,0 +1,10 @@
+# JDK 1.5 or greater base directory
+#JDK_HOME=/usr/lib/jvm/java-6-openjdk
+JDK_HOME=/usr/lib/jvm/java-1.6.0-openjdk-1.6.0.0
+
+
+# FUSE library & headers base directory
+FUSE_HOME=/root/fuse-2.8.6
+
+# Set here any variables that may be needed to build user filesystems.
+#JE_CLASSPATH=/usr/share/je-3.3.62/lib/je-3.3.62.jar

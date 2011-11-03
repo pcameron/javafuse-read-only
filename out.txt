@@ -1,0 +1,19 @@
+gcc -shared build/statClass.o build/statvfsClass.o build/conninfoClass.o build/fsClass.o build/javafuse_jni.o build/contextClass.o build/utimebufClass.o build/fileinfoClass.o -o build/libjavafuse.so
+gcc -g -Wall `pkg-config --cflags fuse` -Iinclude -I/usr/lib/jvm/java-1.6.0-openjdk-1.6.0.0/include -I/usr/lib/jvm/java-1.6.0-openjdk-1.6.0.0/include/linux `pkg-config --libs fuse`  -L/usr/lib/jvm/java-1.6.0-openjdk-1.6.0.0/jre/lib/i386/client -L/usr/lib/jvm/java-1.6.0-openjdk-1.6.0.0/jre/lib/i386 -L/usr/lib/jvm/java-1.6.0-openjdk-1.6.0.0/jre/../lib/i386 -L/usr/java/packages/lib/i386 -L/lib -L/usr/lib -ljvm -Lbuild -ljavafuse src/javafuselibs.h -o javafuse
+src/javafuselibs.h: In function ‘javafuse_readdir’:
+src/javafuselibs.h:2194: warning: cast from pointer to integer of different size
+src/javafuselibs.h:2195: warning: cast from pointer to integer of different size
+src/javafuselibs.h:2207: warning: cast to pointer from integer of different size
+src/javafuselibs.h:2208: warning: cast to pointer from integer of different size
+src/javafuselibs.h:2256: warning: cast from pointer to integer of different size
+src/javafuselibs.h:2257: warning: cast from pointer to integer of different size
+src/javafuselibs.h:2271: warning: cast to pointer from integer of different size
+src/javafuselibs.h:2272: warning: cast to pointer from integer of different size
+src/javafuselibs.h: In function ‘javafuse_releasedir’:
+src/javafuselibs.h:2332: warning: assignment from incompatible pointer type
+src/javafuselibs.h: In function ‘javafuse_fsyncdir’:
+src/javafuselibs.h:2420: warning: assignment from incompatible pointer type
+/usr/lib/gcc/i686-redhat-linux/4.4.4/../../../crt1.o: In function `_start':
+(.text+0x18): undefined reference to `main'
+collect2: ld returned 1 exit status
+make: *** [javafuse] Error 1

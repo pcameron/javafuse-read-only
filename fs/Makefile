@@ -1,0 +1,27 @@
+include ../build.conf
+
+builddir = build
+
+CC = gcc
+JAVAC = javac
+JAVA = java
+JFLAGS = -Xlint -source 5
+CFLAGS = -c -g -Wall `pkg-config --cflags fuse`
+LDFLAGS = `pkg-config --libs fuse` $(shell java -jar ../util/DumpJVMLdPath.jar) -ljvm
+INCLUDES = -I$(includedir) -I$(JDK_HOME)/include -I$(JDK_HOME)/include/linux
+WEBDRIVERPATH = browsefs/selenium-server-standalone-2.7.0.jar
+CLASSPATH = ../build:$(builddir):$(WEBDRIVERPATH)
+
+browsefsdir = browsefs
+browsefs_sources = $(shell find $(browsefsdir) -type f -name '*.java')
+
+all: $(builddir) BrowseFS
+
+$(builddir):
+	mkdir $(builddir)
+
+BrowseFS: $(browsefs_sources)
+	$(JAVAC) $(JFLAGS) -cp $(CLASSPATH) $^ -d $(builddir)
+
+clean:
+	rm -rf $(builddir)/$(spadedir)

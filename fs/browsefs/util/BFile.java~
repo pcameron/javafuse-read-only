@@ -1,0 +1,13 @@
+package browsefs;
+
+public class BFile extends BNode{
+	
+	public List<BNode> contents;
+
+	public BFile (){
+		contents = new ArrayList<BNode>();	
+
+	}
+
+
+}

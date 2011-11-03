@@ -1,0 +1,12 @@
+package browsefs;
+
+
+public class BFolder extends BNode{
+
+
+	public BFolder (){
+
+	}
+
+
+}
